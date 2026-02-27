@@ -9,6 +9,25 @@ jobs:
   # BACKEND
   # ══════════════════════════════════════════════════════════════════════════════
 
+  backend-test:
+    name: Backend — Unit Tests (Jest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests with coverage
+        run: npm test
+
   backend-lint:
     name: Backend — Code Style (ESLint)
     runs-on: ubuntu-latest
