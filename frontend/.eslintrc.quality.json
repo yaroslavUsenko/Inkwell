@@ -1,0 +1,25 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "plugins": ["sonarjs", "react"],
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module",
+    "ecmaFeatures": { "jsx": true }
+  },
+  "settings": {
+    "react": { "version": "detect" }
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "react/jsx-uses-vars": "warn",
+    "sonarjs/cognitive-complexity": ["warn", 25],
+    "sonarjs/no-duplicate-string": ["warn", 5],
+    "sonarjs/no-identical-functions": "warn",
+    "sonarjs/no-all-duplicated-branches": "warn"
+  }
+}

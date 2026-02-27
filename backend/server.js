@@ -21,7 +21,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/posts/:postId/comments', commentRoutes);
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(err.stack);
   const status = err.status || 500;
   res.status(status).json({ message: err.message || 'Internal server error' });

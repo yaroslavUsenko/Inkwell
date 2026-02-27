@@ -40,7 +40,7 @@ export default function ForgotPassword() {
           </div>
           <div>
             <h1 className="auth-card-title">Forgot password?</h1>
-            <p className="auth-card-subtitle">We'll send a reset link to your email</p>
+            <p className="auth-card-subtitle">We&apos;ll send a reset link to your email</p>
           </div>
         </div>
 
