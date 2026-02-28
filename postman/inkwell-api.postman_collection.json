@@ -1,0 +1,1397 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Inkwell Blog – API Test Suite",
+    "description": "Complete REST API test suite for the Inkwell Blog application.\n\nCovers all 16 endpoints across 4 route groups:\n  • Auth (5 routes): register, login, forgot-password, validate-reset-token, reset-password\n  • Users (3 routes): get profile, update profile, change password\n  • Posts (5 routes): list, get, create, update, delete\n  • Comments (3 routes): list, create, delete\n\nRun the entire collection in order — variables (token, userId, postId, commentId, resetToken) are captured automatically from responses.\n\nRequirements:\n  - Backend running on http://localhost:5000\n  - MongoDB running locally",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Base URL of the Inkwell API server"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "JWT auth token – captured automatically by Register/Login tests"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Registered test user ID – captured by Register test"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string",
+      "description": "Created test post ID – captured by Create Post test"
+    },
+    {
+      "key": "commentId",
+      "value": "",
+      "type": "string",
+      "description": "Created test comment ID – captured by Add Comment test"
+    },
+    {
+      "key": "testEmail",
+      "value": "",
+      "type": "string",
+      "description": "Unique test email – generated in Register pre-request script"
+    },
+    {
+      "key": "testPassword",
+      "value": "ApiTest123!",
+      "type": "string",
+      "description": "Password for the test user account"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string",
+      "description": "Password reset token – captured by Forgot Password test"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · Authentication",
+      "description": "Tests for /api/auth/* endpoints",
+      "item": [
+        {
+          "name": "1.1 Register – Success [201]",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('testEmail', 'apitest_' + Date.now() + '@inkwell.test');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response contains JWT token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response contains user object with id, name, email', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user).to.have.property('name', 'API Test User');",
+                  "    pm.expect(json.user).to.have.property('email', pm.collectionVariables.get('testEmail'));",
+                  "});",
+                  "",
+                  "// Capture token and userId for subsequent tests",
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);",
+                  "if (json.user && json.user.id) pm.collectionVariables.set('userId', json.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"API Test User\", \"email\": \"{{testEmail}}\", \"password\": \"{{testPassword}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Register – Duplicate Email [409]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 – Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Email already registered', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Email already registered');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Duplicate User\", \"email\": \"{{testEmail}}\", \"password\": \"{{testPassword}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Register – Missing Fields [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: All fields are required', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('All fields are required');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Incomplete\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Login – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains JWT token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response contains user object', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user.email).to.equal(pm.collectionVariables.get('testEmail'));",
+                  "});",
+                  "",
+                  "// Refresh token",
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{testEmail}}\", \"password\": \"{{testPassword}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Login – Wrong Password [401]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Invalid email or password', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Invalid email or password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{testEmail}}\", \"password\": \"wrongpassword\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.6 Login – Missing Fields [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Email and password are required', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Email and password are required');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{testEmail}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.7 Forgot Password – Existing Email [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains success message', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    pm.expect(json.message).to.include('reset link');",
+                  "});",
+                  "",
+                  "pm.test('Response contains resetUrl and captures token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('resetUrl');",
+                  "    pm.expect(json.resetUrl).to.be.a('string').and.include('/reset-password/');",
+                  "    // Extract the raw reset token from the URL",
+                  "    const parts = json.resetUrl.split('/reset-password/');",
+                  "    const rawToken = parts[parts.length - 1];",
+                  "    pm.collectionVariables.set('resetToken', rawToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{testEmail}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "1.8 Forgot Password – Unknown Email [404]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message: No account with that email address exists', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('No account with that email address exists.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"nobody_exists@inkwell.test\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "1.9 Validate Reset Token – Valid [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains valid: true', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('valid', true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/validate-reset-token/{{resetToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "validate-reset-token", "{{resetToken}}"]
+            }
+          }
+        },
+        {
+          "name": "1.10 Validate Reset Token – Invalid [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: token invalid or expired', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Password reset token is invalid or has expired.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/validate-reset-token/thisisatotallyinvalidresettoken000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "validate-reset-token", "thisisatotallyinvalidresettoken000000"]
+            }
+          }
+        },
+        {
+          "name": "1.11 Reset Password – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains new JWT token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response contains user object', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "});",
+                  "",
+                  "// Update token with the new one returned after reset",
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"{{testPassword}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password/{{resetToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password", "{{resetToken}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 · Users",
+      "description": "Tests for /api/users/* endpoints",
+      "item": [
+        {
+          "name": "2.1 Get User Profile – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user and posts', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json).to.have.property('posts');",
+                  "    pm.expect(json.posts).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('User has expected fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.user).to.have.property('name');",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "    pm.expect(json.user).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Get User Profile – Not Found [404]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message: User not found', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('User not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "507f1f77bcf86cd799439011"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Update Profile – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile fields updated correctly', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.bio).to.equal('Bio updated via Postman API test');",
+                  "    pm.expect(json.firstname).to.equal('Postman');",
+                  "    pm.expect(json.lastname).to.equal('Tester');",
+                  "});",
+                  "",
+                  "pm.test('Password not exposed in response', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bio\": \"Bio updated via Postman API test\", \"firstname\": \"Postman\", \"lastname\": \"Tester\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Update Profile – No Auth [401]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bio\": \"should be blocked\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Update Profile – Forbidden (wrong userId) [403]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403 – Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Not authorized to edit this profile', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Not authorized to edit this profile');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bio\": \"trying to edit another user\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/507f191e810c19729de860ea",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "507f191e810c19729de860ea"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Change Password – Wrong Current [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Current password is incorrect', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Current password is incorrect');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\": \"TotallyWrongPass!\", \"newPassword\": \"NewPass456!\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}", "password"]
+            }
+          }
+        },
+        {
+          "name": "2.7 Change Password – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Success message: Password changed successfully', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Password changed successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\": \"{{testPassword}}\", \"newPassword\": \"{{testPassword}}\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}", "password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 · Posts",
+      "description": "Tests for /api/posts/* endpoints",
+      "item": [
+        {
+          "name": "3.1 Get All Posts [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has pagination shape', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('posts');",
+                  "    pm.expect(json).to.have.property('total');",
+                  "    pm.expect(json).to.have.property('page');",
+                  "    pm.expect(json).to.have.property('pages');",
+                  "    pm.expect(json.posts).to.be.an('array');",
+                  "    pm.expect(json.total).to.be.a('number');",
+                  "    pm.expect(json.page).to.equal(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Get All Posts – Paginated [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Respects limit parameter', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.posts.length).to.be.at.most(3);",
+                  "    pm.expect(json.page).to.equal(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts?page=1&limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "3" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 Create Post – No Auth [401]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – Unauthorized (no token)', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Ghost Post\", \"body\": \"This should be rejected.\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Create Post – Missing Fields [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Title and body are required', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Title and body are required');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"description\": \"Only description, no title or body\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Create Post – Success [201]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has correct post fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "    pm.expect(json.title).to.equal('Postman Test Post');",
+                  "    pm.expect(json.description).to.equal('Created via Postman API test');",
+                  "    pm.expect(json).to.have.property('author');",
+                  "    pm.expect(json.author).to.have.property('name');",
+                  "});",
+                  "",
+                  "// Capture postId for subsequent tests",
+                  "const json = pm.response.json();",
+                  "if (json._id) pm.collectionVariables.set('postId', json._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Postman Test Post\", \"description\": \"Created via Postman API test\", \"body\": \"This is the full body content of the test post created by Postman.\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts"]
+            }
+          }
+        },
+        {
+          "name": "3.6 Get Post by ID [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns the correct post', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json._id).to.equal(pm.collectionVariables.get('postId'));",
+                  "    pm.expect(json).to.have.property('title');",
+                  "    pm.expect(json).to.have.property('body');",
+                  "    pm.expect(json).to.have.property('author');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.7 Get Post by ID – Not Found [404]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Post not found', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Post not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "507f1f77bcf86cd799439011"]
+            }
+          }
+        },
+        {
+          "name": "3.8 Update Post – No Auth [401]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – Unauthorized (no token)', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Hacked Title\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.9 Update Post – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Post updated with new values', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.title).to.equal('Updated Postman Test Post');",
+                  "    pm.expect(json.description).to.equal('Updated description via Postman');",
+                  "    pm.expect(json._id).to.equal(pm.collectionVariables.get('postId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Updated Postman Test Post\", \"description\": \"Updated description via Postman\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 · Comments",
+      "description": "Tests for /api/posts/:postId/comments/* endpoints",
+      "item": [
+        {
+          "name": "4.1 Get Comments – Initial [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array (empty for new post)', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Add Comment – No Auth [401]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 – Unauthorized (no token)', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"body\": \"Ghost comment\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "4.3 Add Comment – Missing Body [400]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 – Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Comment body is required', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Comment body is required');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "4.4 Add Comment – Success [201]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 – Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has comment fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "    pm.expect(json.body).to.equal('This is a test comment via Postman.');",
+                  "    pm.expect(json).to.have.property('author');",
+                  "    pm.expect(json.author).to.have.property('name');",
+                  "});",
+                  "",
+                  "// Capture commentId for deletion test",
+                  "const json = pm.response.json();",
+                  "if (json._id) pm.collectionVariables.set('commentId', json._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"body\": \"This is a test comment via Postman.\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "4.5 Get Comments – After Add [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Array contains at least one comment', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    pm.expect(json[0]).to.have.property('body');",
+                  "    pm.expect(json[0]).to.have.property('author');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "4.6 Delete Comment – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Success message: Comment deleted', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Comment deleted');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments/{{commentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments", "{{commentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 · Cleanup",
+      "description": "Tear-down: delete the test post created during the test run",
+      "item": [
+        {
+          "name": "5.1 Delete Post – Success [200]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 – OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Success message: Post deleted', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Post deleted');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Delete Post – Already Deleted [404]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 – Not Found (already deleted)', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Error message: Post not found', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message).to.equal('Post not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "inkwell-api-tests",
+  "version": "1.0.0",
+  "description": "Newman CLI runner for Inkwell Postman API test collection",
+  "scripts": {
+    "test": "newman run inkwell-api.postman_collection.json --environment inkwell-api.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/report.html",
+    "test:ci": "newman run inkwell-api.postman_collection.json --environment inkwell-api.postman_environment.json --reporters cli,junit --reporter-junit-export reports/junit.xml"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}
