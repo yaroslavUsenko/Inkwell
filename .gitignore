@@ -30,3 +30,6 @@ coverage/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Robot Framework
+/robot/results/

@@ -4,7 +4,7 @@ const path = require('path')
 
 /** @see https://playwright.dev/docs/test-configuration */
 module.exports = defineConfig({
-  testDir: './e2e',
+  testDir: './rnp',
 
   /* Run tests in files in parallel */
   fullyParallel: true,
