@@ -1,0 +1,16 @@
+{
+  "name": "inkwell-selenium",
+  "version": "1.0.0",
+  "description": "Selenium WebDriver E2E tests for Inkwell blog app",
+  "private": true,
+  "scripts": {
+    "test": "mocha",
+    "test:headless": "cross-env HEADLESS=true mocha"
+  },
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "cross-env": "^7.0.3",
+    "mocha": "^10.8.2",
+    "selenium-webdriver": "^4.27.0"
+  }
+}
